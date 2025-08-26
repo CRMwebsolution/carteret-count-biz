@@ -1,11 +1,34 @@
 import { Link, NavLink } from 'react-router-dom'
 import { useState } from 'react'
+import { useAuth } from '../hooks/useAuth'
+import { signOut } from '../lib/auth'
+import AuthModal from './AuthModal'
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [authModal, setAuthModal] = useState<{ isOpen: boolean; mode: 'signin' | 'signup' }>({
+    isOpen: false,
+    mode: 'signin'
+  })
+  const { user, loading } = useAuth()
+
+  async function handleSignOut() {
+    try {
+      await signOut()
+      setIsMenuOpen(false)
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
+
+  function openAuthModal(mode: 'signin' | 'signup') {
+    setAuthModal({ isOpen: true, mode })
+    setIsMenuOpen(false)
+  }
 
   return (
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b">
+    <>
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/" className="font-bold text-lg">Carteret Local</Link>
         
@@ -13,7 +36,34 @@ export default function Navbar() {
         <nav className="hidden md:flex items-center gap-6">
           <NavLink to="/categories" className={({isActive}) => isActive ? 'text-brand font-medium' : 'text-gray-700'}>Categories</NavLink>
           <NavLink to="/add" className="rounded-full bg-brand text-white px-4 py-2 hover:bg-brand-dark transition">Add a Business</NavLink>
-          <NavLink to="/account" className={({isActive}) => isActive ? 'text-brand font-medium' : 'text-gray-700'}>Account</NavLink>
+          {!loading && (
+            user ? (
+              <div className="flex items-center gap-4">
+                <NavLink to="/account" className={({isActive}) => isActive ? 'text-brand font-medium' : 'text-gray-700'}>Account</NavLink>
+                <button
+                  onClick={handleSignOut}
+                  className="text-gray-700 hover:text-brand transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => openAuthModal('signin')}
+                  className="text-gray-700 hover:text-brand transition-colors"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => openAuthModal('signup')}
+                  className="rounded-full border border-brand text-brand px-4 py-2 hover:bg-brand hover:text-white transition-colors"
+                >
+                  Sign Up
+                </button>
+              </div>
+            )
+          )}
         </nav>
         
         {/* Mobile Menu Button */}
@@ -50,16 +100,51 @@ export default function Navbar() {
             >
               Add a Business
             </NavLink>
-            <NavLink 
-              to="/account" 
-              className={({isActive}) => `block py-2 ${isActive ? 'text-brand font-medium' : 'text-gray-700'}`}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Account
-            </NavLink>
+              {!loading && (
+                user ? (
+                  <>
+                    <NavLink 
+                      to="/account" 
+                      className={({isActive}) => `block py-2 ${isActive ? 'text-brand font-medium' : 'text-gray-700'}`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Account
+                    </NavLink>
+                    <button
+                      onClick={handleSignOut}
+                      className="block py-2 text-gray-700 hover:text-brand transition-colors w-full text-left"
+                    >
+                      Sign Out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => openAuthModal('signin')}
+                      className="block py-2 text-gray-700 hover:text-brand transition-colors w-full text-left"
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      onClick={() => openAuthModal('signup')}
+                      className="block rounded-full border border-brand text-brand px-4 py-2 text-center hover:bg-brand hover:text-white transition-colors"
+                    >
+                      Sign Up
+                    </button>
+                  </>
+                )
+              )}
           </nav>
         </div>
       )}
-    </header>
+      </header>
+
+      <AuthModal
+        isOpen={authModal.isOpen}
+        onClose={() => setAuthModal({ ...authModal, isOpen: false })}
+        mode={authModal.mode}
+        onModeChange={(mode) => setAuthModal({ ...authModal, mode })}
+      />
+    </>
   )
 }

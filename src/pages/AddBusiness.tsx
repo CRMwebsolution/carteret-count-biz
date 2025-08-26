@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 
 const MOCK = import.meta.env.VITE_MOCK_PAYMENTS === 'true'
 
 export default function AddBusiness(){
+  const { user } = useAuth()
   const [form, setForm] = useState<any>({ name: '', city: '', phone: '', website: '', description: '' })
   const [photo, setPhoto] = useState<File|null>(null)
   const [loading, setLoading] = useState(false)
@@ -16,9 +18,21 @@ export default function AddBusiness(){
     setError(null); setSuccess(null)
     try{
       // 1) create listing (pending)
-      const { data: listing, error: lerr } = await supabase.from('listings').insert({
-        name: form.name, city: form.city, phone: form.phone, website: form.website, description: form.description, status: 'pending'
-      }).select().single()
+      const listingData = {
+        name: form.name, 
+        city: form.city, 
+        phone: form.phone, 
+        website: form.website, 
+        description: form.description, 
+        status: 'pending',
+        ...(user && { user_id: user.id })
+      }
+      
+      const { data: listing, error: lerr } = await supabase
+        .from('listings')
+        .insert(listingData)
+        .select()
+        .single()
       if(lerr) throw lerr
 
       // 2) upload photo (optional)
