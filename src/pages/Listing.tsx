@@ -20,24 +20,56 @@ export default function Listing(){
   if(!data) return <div className="max-w-6xl mx-auto px-4 py-12">Loading...</div>
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
+    <div className="max-w-6xl mx-auto px-4 py-6 md:py-8">
+      <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
+        <div className="lg:col-span-2">
           <div className="aspect-video bg-gray-100 rounded-2xl overflow-hidden">
-            {photos[0] && <img src={storageUrl('listing-photos', photos[0].storage_path)} className="w-full h-full object-cover" />}
+            {photos[0] && (
+              <img 
+                src={storageUrl('listing-photos', photos[0].storage_path)} 
+                className="w-full h-full object-cover" 
+                alt={data.name}
+              />
+            )}
           </div>
-          <div className="mt-4 grid grid-cols-5 gap-2">
+          <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
             {photos.slice(1).map(p => (
-              <img key={p.id} src={storageUrl('listing-photos', p.storage_path)} className="rounded-lg aspect-video object-cover" />
+              <img 
+                key={p.id} 
+                src={storageUrl('listing-photos', p.storage_path)} 
+                className="rounded-lg aspect-video object-cover" 
+                alt={`${data.name} photo`}
+              />
             ))}
           </div>
         </div>
-        <aside className="space-y-4">
-          <h1 className="text-2xl font-bold">{data.name}</h1>
+        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <h1 className="text-xl md:text-2xl font-bold">{data.name}</h1>
           {data.badge === 'verified' && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Verified</span>}
-          {data.phone && <a className="block rounded-xl border px-4 py-3 hover:bg-gray-50" href={`tel:${data.phone}`}>Call {data.phone}</a>}
-          {data.website && <a className="block rounded-xl border px-4 py-3 hover:bg-gray-50" target="_blank" href={data.website}>Visit Website</a>}
-          <Link to={`/verify/${data.id}`} className="block rounded-xl bg-brand text-white px-4 py-3 text-center hover:bg-brand-dark">Claim or Verify</Link>
+          {data.phone && (
+            <a 
+              className="block rounded-xl border px-4 py-3 hover:bg-gray-50 text-center sm:text-left transition-colors" 
+              href={`tel:${data.phone}`}
+            >
+              Call {data.phone}
+            </a>
+          )}
+          {data.website && (
+            <a 
+              className="block rounded-xl border px-4 py-3 hover:bg-gray-50 text-center sm:text-left transition-colors" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              href={data.website}
+            >
+              Visit Website
+            </a>
+          )}
+          <Link 
+            to={`/verify/${data.id}`} 
+            className="block rounded-xl bg-brand text-white px-4 py-3 text-center hover:bg-brand-dark transition-colors font-medium"
+          >
+            Claim or Verify
+          </Link>
         </aside>
       </div>
     </div>

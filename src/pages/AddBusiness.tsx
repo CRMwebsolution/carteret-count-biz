@@ -59,24 +59,58 @@ export default function AddBusiness(){
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-12">
-      <h1 className="text-2xl font-bold mb-6">Add a Business</h1>
+    <div className="max-w-2xl mx-auto px-4 py-6 md:py-12">
+      <h1 className="text-xl md:text-2xl font-bold mb-6">Add a Business</h1>
       {MOCK && <div className="mb-4 rounded-xl border bg-yellow-50 text-yellow-800 p-3 text-sm">Demo mode is active (VITE_MOCK_PAYMENTS=true). Submissions are auto-activated with no payment.</div>}
       <form className="space-y-4" onSubmit={handleSubmit}>
-        <input required placeholder="Business name" className="w-full rounded-xl border px-4 py-3" value={form.name} onChange={e=>setForm({...form, name:e.target.value})}/>
+        <input 
+          required 
+          placeholder="Business name" 
+          className="w-full rounded-xl border px-4 py-3 text-base" 
+          value={form.name} 
+          onChange={e=>setForm({...form, name:e.target.value})}
+        />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input placeholder="City" className="w-full rounded-xl border px-4 py-3" value={form.city} onChange={e=>setForm({...form, city:e.target.value})}/>
-          <input placeholder="Phone" className="w-full rounded-xl border px-4 py-3" value={form.phone} onChange={e=>setForm({...form, phone:e.target.value})}/>
+          <input 
+            placeholder="City" 
+            className="w-full rounded-xl border px-4 py-3 text-base" 
+            value={form.city} 
+            onChange={e=>setForm({...form, city:e.target.value})}
+          />
+          <input 
+            placeholder="Phone" 
+            className="w-full rounded-xl border px-4 py-3 text-base" 
+            value={form.phone} 
+            onChange={e=>setForm({...form, phone:e.target.value})}
+          />
         </div>
-        <input placeholder="Website (https://...)" className="w-full rounded-xl border px-4 py-3" value={form.website} onChange={e=>setForm({...form, website:e.target.value})}/>
-        <textarea placeholder="Short description" className="w-full rounded-xl border px-4 py-3 min-h-28" value={form.description} onChange={e=>setForm({...form, description:e.target.value})}/>
+        <input 
+          placeholder="Website (https://...)" 
+          className="w-full rounded-xl border px-4 py-3 text-base" 
+          value={form.website} 
+          onChange={e=>setForm({...form, website:e.target.value})}
+        />
+        <textarea 
+          placeholder="Short description" 
+          className="w-full rounded-xl border px-4 py-3 min-h-28 text-base resize-y" 
+          value={form.description} 
+          onChange={e=>setForm({...form, description:e.target.value})}
+        />
         <div>
           <label className="text-sm text-gray-600 block mb-1">Primary photo (optional)</label>
-          <input type="file" accept="image/*" onChange={e=>setPhoto(e.target.files?.[0] || null)} />
+          <input 
+            type="file" 
+            accept="image/*" 
+            className="w-full text-base" 
+            onChange={e=>setPhoto(e.target.files?.[0] || null)} 
+          />
         </div>
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {success && <p className="text-green-700 text-sm">{success}</p>}
-        <button disabled={loading} className="rounded-xl bg-brand text-white px-5 py-3 hover:bg-brand-dark disabled:opacity-50">
+        <button 
+          disabled={loading} 
+          className="w-full sm:w-auto rounded-xl bg-brand text-white px-5 py-3 hover:bg-brand-dark disabled:opacity-50 text-base font-medium"
+        >
           {loading ? 'Processing…' : (MOCK ? 'Create (Demo Mode)' : 'Continue to Payment')}
         </button>
       </form>
