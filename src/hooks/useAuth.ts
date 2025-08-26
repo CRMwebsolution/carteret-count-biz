@@ -18,7 +18,7 @@ export function useAuth() {
     })
 
     // subscription
-    const { data: { subscription } } = onAuthStateChange((u) => {
+    const { subscription } = onAuthStateChange((u) => {
       if (mounted) {
         setUser(u)
         setLoading(false)
