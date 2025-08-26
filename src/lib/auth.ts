@@ -80,7 +80,7 @@ export async function signUpWithPassword(
   return toAuthUser(data.user)
 }
 
-/**
+/*
  * signOut: end the current session
  */
 export async function signOut() {
