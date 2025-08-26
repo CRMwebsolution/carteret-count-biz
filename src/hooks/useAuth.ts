@@ -1,3 +1,4 @@
+// src/hooks/useAuth.ts
 import { useState, useEffect } from 'react'
 import { AuthUser, getCurrentUser, onAuthStateChange } from '../lib/auth'
 
@@ -6,20 +7,31 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial user
-    getCurrentUser().then((user) => {
-      setUser(user)
-      setLoading(false)
+    let mounted = true
+
+    // initial fetch
+    getCurrentUser().then((u) => {
+      if (mounted) {
+        setUser(u)
+        setLoading(false)
+      }
     })
 
-    // Listen for auth changes
-    const { data: { subscription } } = onAuthStateChange((user) => {
-      setUser(user)
-      setLoading(false)
+    // subscription
+    const { data: { subscription } } = onAuthStateChange((u) => {
+      if (mounted) {
+        setUser(u)
+        setLoading(false)
+      }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   return { user, loading }
 }
+
+export default useAuth
