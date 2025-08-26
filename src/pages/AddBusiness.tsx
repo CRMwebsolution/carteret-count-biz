@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { signOut } from '../lib/auth'
 
 const MOCK = import.meta.env.VITE_MOCK_PAYMENTS === 'true'
 
@@ -68,7 +69,15 @@ export default function AddBusiness(){
       window.location.href = url
     }catch(err:any){
       console.error(err)
-      setError(err.message || 'Something went wrong')
+      
+      // Check for foreign key constraint violation (stale user session)
+      if (err.code === '23503' && err.message?.includes('listings_owner_id_fkey')) {
+        setError('Your session has expired. Please sign in again.')
+        // Clear the stale session
+        await signOut()
+      } else {
+        setError(err.message || 'Something went wrong')
+      }
       setLoading(false)
     }
   }
