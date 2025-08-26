@@ -34,38 +34,29 @@ export function onAuthStateChange(
   return data
 }
 
-/**
- * signIn: Email OTP (magic link) by default, for compatibility with existing imports.
- * Usage: await signIn('you@example.com')
- */
+/** Email OTP (magic link) sign-in */
 export async function signIn(email: string) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: window.location.origin }
+    options: { emailRedirectTo: window.location.origin },
   })
   if (error) throw error
   return true
 }
 
-/**
- * signInWithOtp: explicit alias (same behavior as signIn)
- */
+/** Explicit alias for OTP sign-in */
 export async function signInWithOtp(email: string) {
   return signIn(email)
 }
 
-/**
- * signInWithPassword: email + password sign-in
- */
+/** Email + password sign-in */
 export async function signInWithPassword(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) throw error
   return toAuthUser(data.user)
 }
 
-/**
- * signUpWithPassword: email + password sign-up
- */
+/** Email + password sign-up */
 export async function signUpWithPassword(
   email: string,
   password: string,
@@ -74,15 +65,22 @@ export async function signUpWithPassword(
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: metadata }
+    options: { data: metadata },
   })
   if (error) throw error
   return toAuthUser(data.user)
 }
 
-/*
- * signOut: end the current session
- */
+/** Alias expected by existing imports */
+export async function signUp(
+  email: string,
+  password: string,
+  metadata?: Record<string, any>
+) {
+  return signUpWithPassword(email, password, metadata)
+}
+
+/** Sign out */
 export async function signOut() {
   const { error } = await supabase.auth.signOut()
   if (error) throw error
