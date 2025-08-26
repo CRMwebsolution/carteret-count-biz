@@ -80,7 +80,7 @@ export async function signUp(
   return signUpWithPassword(email, password, metadata)
 }
 
-/** Sign out */
+/**Sign out */
 export async function signOut() {
   const { error } = await supabase.auth.signOut()
   if (error) throw error
