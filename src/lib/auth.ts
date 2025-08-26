@@ -1,45 +1,42 @@
+// src/lib/auth.ts
 import { supabase } from './supabase'
-import { User } from '@supabase/supabase-js'
+import type { User } from '@supabase/supabase-js'
 
-export interface AuthUser extends User {
+export type AuthUser = {
+  id: string
   email?: string
-}
-
-export async function signUp(email: string, password: string) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${window.location.origin}/account`
-    }
-  })
-  
-  if (error) throw error
-  return data
-}
-
-export async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  })
-  
-  if (error) throw error
-  return data
-}
-
-export async function signOut() {
-  const { error } = await supabase.auth.signOut()
-  if (error) throw error
+  phone?: string
+  [key: string]: any
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
+  const { data } = await supabase.auth.getUser()
+  const u: User | null = data.user
+  if (!u) return null
+  return {
+    id: u.id,
+    email: u.email ?? undefined,
+    phone: u.phone ?? undefined,
+    ...u.user_metadata,
+  }
 }
 
-export function onAuthStateChange(callback: (user: AuthUser | null) => void) {
-  return supabase.auth.onAuthStateChange((event, session) => {
-    callback(session?.user || null)
+export function onAuthStateChange(
+  callback: (user: AuthUser | null) => void
+) {
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (session?.user) {
+      const u = session.user
+      callback({
+        id: u.id,
+        email: u.email ?? undefined,
+        phone: u.phone ?? undefined,
+        ...u.user_metadata,
+      })
+    } else {
+      callback(null)
+    }
   })
+
+  return data
 }
