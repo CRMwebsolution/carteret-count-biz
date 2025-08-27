@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { signOut, getCurrentUser } from '../lib/auth'
+import { getCurrentUser } from '../lib/auth'
 
 const MOCK = import.meta.env.VITE_MOCK_PAYMENTS === 'true'
 
@@ -60,13 +60,35 @@ export default function AddBusiness(){
       // Proactively validate user session if user is logged in
       let validUserId = null
       if (user) {
-        const freshUser = await getCurrentUser()
-        if (!freshUser || freshUser.id !== user.id) {
+        console.log('User from useAuth:', user)
+        
+        try {
+          const { data, error: getUserError } = await supabase.auth.getUser()
+          console.log('Supabase getUser data:', data)
+          console.log('Supabase getUser error:', getUserError)
+          
+          const freshUser = data?.user ? {
+            id: data.user.id,
+            email: data.user.email ?? undefined,
+            phone: data.user.phone ?? undefined,
+            ...data.user.user_metadata,
+          } : null
+          
+          console.log('Fresh user after processing:', freshUser)
+          
+          if (!freshUser || freshUser.id !== user.id) {
+            console.log('Session validation failed - freshUser:', freshUser, 'user.id:', user.id)
+            setError('Your session has expired. Please sign in again.')
+            setLoading(false)
+            return
+          }
+          validUserId = freshUser.id
+        } catch (sessionError) {
+          console.error('Error during session validation:', sessionError)
           setError('Your session has expired. Please sign in again.')
           setLoading(false)
           return
         }
-        validUserId = freshUser.id
       }
 
       // 1) create listing (pending)
@@ -129,6 +151,7 @@ export default function AddBusiness(){
       const { url } = await res.json()
       window.location.href = url
     }catch(err:any){
+      console.error('Submission error:', err)
       console.error(err)
       
       // Check for foreign key constraint violation (stale user session)
