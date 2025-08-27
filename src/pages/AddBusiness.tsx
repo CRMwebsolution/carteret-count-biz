@@ -278,4 +278,137 @@ export default function AddBusiness() {
             >
               <option value="NC">North Carolina</option>
               <option value="SC">South Carolina</option>
-              <optio
+              <option value="VA">Virginia</option>
+            </select>
+            <input
+              placeholder="ZIP Code"
+              className="w-full rounded-xl border px-4 py-3 text-base"
+              value={form.postal_code}
+              onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
+            />
+            <select
+              className="w-full rounded-xl border px-4 py-3 text-base"
+              value={form.price_level}
+              onChange={(e) => setForm({ ...form, price_level: parseInt(e.target.value) })}
+            >
+              <option value={1}>$ - Budget</option>
+              <option value={2}>$$ - Moderate</option>
+              <option value={3}>$$$ - Expensive</option>
+              <option value={4}>$$$$ - Very Expensive</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-lg font-medium">Hours of Operation</h3>
+          <div className="space-y-2">
+            {Object.entries(form.hours as Hours).map(([day, dayHours]) => (
+              <div key={day} className="flex items-center gap-3 p-3 border rounded-xl">
+                <div className="w-20 text-sm font-medium capitalize">{day}</div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={dayHours.is_closed}
+                    onChange={(e) => updateHours(day, 'is_closed', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Closed</span>
+                </label>
+                {!dayHours.is_closed && (
+                  <>
+                    <input
+                      type="time"
+                      value={dayHours.open}
+                      onChange={(e) => updateHours(day, 'open', e.target.value)}
+                      className="rounded border px-2 py-1 text-sm"
+                    />
+                    <span className="text-sm text-gray-500">to</span>
+                    <input
+                      type="time"
+                      value={dayHours.close}
+                      onChange={(e) => updateHours(day, 'close', e.target.value)}
+                      className="rounded border px-2 py-1 text-sm"
+                    />
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-lg font-medium">Business Attributes</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="flex items-center gap-2 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={form.is_veteran_owned}
+                onChange={(e) => setForm({ ...form, is_veteran_owned: e.target.checked })}
+                className="rounded"
+              />
+              <span className="text-sm">Veteran Owned</span>
+            </label>
+            <label className="flex items-center gap-2 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={form.is_family_owned}
+                onChange={(e) => setForm({ ...form, is_family_owned: e.target.checked })}
+                className="rounded"
+              />
+              <span className="text-sm">Family Owned</span>
+            </label>
+            <label className="flex items-center gap-2 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={form.accepts_cards}
+                onChange={(e) => setForm({ ...form, accepts_cards: e.target.checked })}
+                className="rounded"
+              />
+              <span className="text-sm">Accepts Cards</span>
+            </label>
+            <label className="flex items-center gap-2 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={form.offers_delivery}
+                onChange={(e) => setForm({ ...form, offers_delivery: e.target.checked })}
+                className="rounded"
+              />
+              <span className="text-sm">Offers Delivery</span>
+            </label>
+          </div>
+        </div>
+
+        <textarea
+          placeholder="Short description"
+          className="w-full rounded-xl border px-4 py-3 min-h-28 text-base resize-y"
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+        />
+
+        <div>
+          <label className="text-sm text-gray-600 block mb-1">Primary photo (optional)</label>
+          <input
+            type="file"
+            accept="image/*"
+            className="w-full text-base"
+            onChange={(e) => setPhoto(e.target.files?.[0] || null)}
+          />
+        </div>
+
+        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {success && <p className="text-green-700 text-sm">{success}</p>}
+
+        <button
+          disabled={loading || !user}
+          className="w-full sm:w-auto rounded-xl bg-brand text-white px-5 py-3 hover:bg-brand-dark disabled:opacity-50 text-base font-medium"
+        >
+          {loading ? 'Processing…' : (MOCK ? 'Create (Demo Mode)' : 'Continue to Payment')}
+        </button>
+      </form>
+
+      <p className="text-sm text-gray-500 mt-4">
+        A small fee helps keep spam out. Your listing will go live after payment (or instantly in demo mode).
+      </p>
+    </div>
+  )
+}
