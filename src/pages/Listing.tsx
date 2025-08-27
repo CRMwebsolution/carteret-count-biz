@@ -72,7 +72,30 @@ export default function Listing(){
           {data.hours && (
             <div className="text-gray-700 text-sm md:text-base">
               <div className="font-medium mb-1">Hours:</div>
-              <div className="text-sm">{JSON.stringify(data.hours)}</div>
+              <div className="text-sm">
+                {(() => {
+                  try {
+                    const hours = typeof data.hours === 'string' ? JSON.parse(data.hours) : data.hours;
+                    const dayNames = {
+                      monday: 'Monday',
+                      tuesday: 'Tuesday', 
+                      wednesday: 'Wednesday',
+                      thursday: 'Thursday',
+                      friday: 'Friday',
+                      saturday: 'Saturday',
+                      sunday: 'Sunday'
+                    };
+                    
+                    return Object.entries(hours).map(([day, time]) => (
+                      <div key={day}>
+                        <span className="font-medium">{dayNames[day as keyof typeof dayNames] || day}:</span> {time || 'Closed'}
+                      </div>
+                    ));
+                  } catch (e) {
+                    return JSON.stringify(data.hours);
+                  }
+                })()}
+              </div>
             </div>
           )}
           
