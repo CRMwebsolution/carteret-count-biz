@@ -25,6 +25,8 @@ function toAuthUser(u: User | null, role?: string): AuthUser | null {
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const { data, error } = await supabase.auth.getUser()
+  console.log('getCurrentUser - supabase.auth.getUser() result:', { data, error })
+  
   if (error) return null
   
   if (!data.user) return null
@@ -36,14 +38,22 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     .eq('id', data.user.id)
     .single()
   
-  return toAuthUser(data.user, userData?.role)
+  console.log('getCurrentUser - userData from users table:', userData)
+  
+  const authUser = toAuthUser(data.user, userData?.role)
+  console.log('getCurrentUser - final authUser:', authUser)
+  
+  return authUser
 }
 
 export function onAuthStateChange(
   callback: (user: AuthUser | null) => void
 ) {
   const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    console.log('onAuthStateChange - event:', _event, 'session:', session)
+    
     if (!session?.user) {
+      console.log('onAuthStateChange - no session or user, calling callback with null')
       callback(null)
       return
     }
@@ -55,7 +65,12 @@ export function onAuthStateChange(
       .eq('id', session.user.id)
       .single()
     
-    callback(toAuthUser(session.user, userData?.role))
+    console.log('onAuthStateChange - userData from users table:', userData)
+    
+    const authUser = toAuthUser(session.user, userData?.role)
+    console.log('onAuthStateChange - final authUser:', authUser)
+    
+    callback(authUser)
   })
   return data
 }
