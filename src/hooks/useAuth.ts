@@ -10,18 +10,29 @@ export function useAuth() {
     let mounted = true
 
     // initial fetch
-    getCurrentUser().then((u) => {
-      if (mounted) {
-        setUser(u)
-        setLoading(false)
-      }
-    })
+    getCurrentUser()
+      .then((u) => {
+        if (mounted) {
+          setUser(u)
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching current user:', error)
+        if (mounted) {
+          setUser(null)
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setLoading(false)
+        }
+      })
 
     // subscription
     const { subscription } = onAuthStateChange((u) => {
       if (mounted) {
         setUser(u)
-        setLoading(false)
+        // Don't set loading to false here since it's already false after initial fetch
       }
     })
 
