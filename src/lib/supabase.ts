@@ -36,6 +36,16 @@ export async function hardAuthUpload(bucket: string, path: string, file: File) {
   const token = sess?.session?.access_token
   if (!token) throw new Error('No Supabase session token found')
 
+  // Validate that the user ID is a proper UUID
+  const userId = sess?.session?.user?.id
+  if (!userId) throw new Error('No user ID found in session')
+  
+  // Check if user ID is a valid UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  if (!uuidRegex.test(userId)) {
+    throw new Error(`Invalid user ID format: "${userId}". Please ensure you are properly authenticated with a valid Supabase account.`)
+  }
+
   const res = await fetch(
     `${SUPABASE_URL}/storage/v1/object/${encodeURIComponent(bucket)}/${path}`,
     {
