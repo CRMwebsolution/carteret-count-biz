@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { signIn, signUp } from '../lib/auth'
+import { signInWithPassword, signUp } from '../lib/auth'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -28,7 +28,7 @@ export default function AuthModal({ isOpen, onClose, mode, onModeChange }: AuthM
         await signUp(email, password)
         setSuccess('Account created! Please check your email to verify your account.')
       } else {
-        await signIn(email, password)
+        await signInWithPassword(email, password)
         setSuccess('Signed in successfully!')
         setTimeout(() => {
           onClose()
