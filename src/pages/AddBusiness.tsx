@@ -52,7 +52,6 @@ export default function AddBusiness() {
     hours: defaultHours,
   })
 
-  const [photo, setPhoto] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -119,38 +118,7 @@ export default function AddBusiness() {
         throw lerr
       }
 
-      // ---- 2) UPLOAD PHOTO (optional) via SIGNED UPLOAD URL ----
-      if (photo) {
-        const filename = safeFilename(photo.name)
-        const path = `${listing.id}/${crypto.randomUUID()}-${filename}`
-
-        // 2a) Create a signed upload URL for that exact path
-        const { data: signed, error: signErr } = await supabase
-          .storage
-          .from('listing-photos')
-          .createSignedUploadUrl(path)
-        if (signErr) throw signErr
-
-        // 2b) Upload the file to the signed URL (no Authorization header to get rewritten)
-        const { error: uploadErr } = await supabase
-          .storage
-          .from('listing-photos')
-          .uploadToSignedUrl(signed.path, signed.token, photo, {
-            contentType: photo.type || 'image/jpeg',
-            upsert: false,
-          })
-        if (uploadErr) throw uploadErr
-
-        // 2c) Record in photos table (for primary image display, etc.)
-        const { error: perr2 } = await supabase.from('photos').insert({
-          listing_id: listing.id,
-          storage_path: path,
-          is_primary: true,
-        })
-        if (perr2) throw perr2
-      }
-
-      // ---- 3) PAYMENT (mock or real) ----
+      // ---- 2) PAYMENT (mock or real) ----
       if (MOCK) {
         await supabase.from('listings').update({ status: 'active' }).eq('id', listing.id)
         setSuccess('Listing created and activated (demo mode).')
@@ -378,16 +346,6 @@ export default function AddBusiness() {
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
-
-        <div>
-          <label className="text-sm text-gray-600 block mb-1">Primary photo (optional)</label>
-          <input
-            type="file"
-            accept="image/*"
-            className="w-full text-base"
-            onChange={(e) => setPhoto(e.target.files?.[0] || null)}
-          />
-        </div>
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {success && <p className="text-green-700 text-sm">{success}</p>}
