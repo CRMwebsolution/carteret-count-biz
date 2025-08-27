@@ -41,7 +41,7 @@ export default function Verify() {
       const storagePath = `verifications/${id}/${crypto.randomUUID()}-${filename}`;
 
       // Upload file to Supabase Storage
-      await hardAuthUpload('verifications', storagePath, selectedFile);
+      await hardAuthUpload('verification-docs', storagePath, selectedFile);
 
       // Insert verification record into the database
       const { error: dbError } = await supabase.from('verifications').insert({
