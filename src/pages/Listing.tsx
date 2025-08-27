@@ -46,6 +46,9 @@ export default function Listing(){
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <h1 className="text-xl md:text-2xl font-bold">{data.name}</h1>
           {data.badge === 'verified' && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Verified</span>}
+          {data.description && (
+            <p className="text-gray-700 text-sm md:text-base leading-relaxed">{data.description}</p>
+          )}
           {data.phone && (
             <a 
               className="block rounded-xl border px-4 py-3 hover:bg-gray-50 text-center sm:text-left transition-colors" 
