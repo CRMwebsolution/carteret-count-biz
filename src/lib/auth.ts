@@ -7,6 +7,7 @@ export type AuthUser = {
   email?: string
   phone?: string
   role?: string
+  email_confirmed_at?: string
   [key: string]: any
 }
 
@@ -17,6 +18,7 @@ function toAuthUser(u: User | null, role?: string): AuthUser | null {
     email: u.email ?? undefined,
     phone: u.phone ?? undefined,
     role: role,
+    email_confirmed_at: u.email_confirmed_at ?? undefined,
     ...u.user_metadata,
   }
 }
