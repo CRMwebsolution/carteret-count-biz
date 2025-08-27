@@ -6,15 +6,17 @@ export type AuthUser = {
   id: string
   email?: string
   phone?: string
+  role?: string
   [key: string]: any
 }
 
-function toAuthUser(u: User | null): AuthUser | null {
+function toAuthUser(u: User | null, role?: string): AuthUser | null {
   if (!u) return null
   return {
     id: u.id,
     email: u.email ?? undefined,
     phone: u.phone ?? undefined,
+    role: role,
     ...u.user_metadata,
   }
 }
@@ -22,14 +24,36 @@ function toAuthUser(u: User | null): AuthUser | null {
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const { data, error } = await supabase.auth.getUser()
   if (error) return null
-  return toAuthUser(data.user)
+  
+  if (!data.user) return null
+  
+  // Fetch role from public.users table
+  const { data: userData } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', data.user.id)
+    .single()
+  
+  return toAuthUser(data.user, userData?.role)
 }
 
 export function onAuthStateChange(
   callback: (user: AuthUser | null) => void
 ) {
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(toAuthUser(session?.user ?? null))
+  const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    if (!session?.user) {
+      callback(null)
+      return
+    }
+    
+    // Fetch role from public.users table
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', session.user.id)
+      .single()
+    
+    callback(toAuthUser(session.user, userData?.role))
   })
   return data
 }
