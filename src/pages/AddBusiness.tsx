@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { signOut } from '../lib/auth'
+import { signOut, getCurrentUser } from '../lib/auth'
 
 const MOCK = import.meta.env.VITE_MOCK_PAYMENTS === 'true'
 
@@ -19,6 +19,19 @@ export default function AddBusiness(){
     setLoading(true)
     setError(null); setSuccess(null)
     try{
+      // Proactively validate user session if user is logged in
+      let validUserId = null
+      if (user) {
+        const freshUser = await getCurrentUser()
+        if (!freshUser || freshUser.id !== user.id) {
+          setError('Your session has expired. Please sign in again.')
+          await signOut()
+          setLoading(false)
+          return
+        }
+        validUserId = freshUser.id
+      }
+
       // 1) create listing (pending)
       const listingData = {
         name: form.name,
@@ -27,7 +40,7 @@ export default function AddBusiness(){
         website: form.website,
         description: form.description,
         status: 'pending',
-        ...(user && { owner_id: user.id }),
+        ...(validUserId && { owner_id: validUserId }),
       }
 
       const { data: listing, error: lerr } = await supabase
