@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, SUPABASE_URL } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
 const MOCK = import.meta.env.VITE_MOCK_PAYMENTS === 'true'
@@ -15,6 +15,47 @@ const defaultHours: Hours = {
   friday: { open: '09:00', close: '17:00', is_closed: false },
   saturday: { open: '09:00', close: '17:00', is_closed: false },
   sunday: { open: '09:00', close: '17:00', is_closed: true },
+}
+
+/** Make filenames safe for URLs & storage */
+function safeFilename(name: string) {
+  const idx = name.lastIndexOf('.')
+  const baseRaw = idx === -1 ? name : name.slice(0, idx)
+  const ext = idx === -1 ? '' : name.slice(idx)
+
+  const cleanedBase = baseRaw
+    .normalize('NFKD')
+    .replace(/[^\w\-]+/g, '-') // non-word to dash
+    .replace(/-+/g, '-')       // collapse dashes
+    .replace(/^-|-$/g, '')     // trim leading/trailing dashes
+
+  return `${cleanedBase || 'file'}${ext}`
+}
+
+/** Force Authorization: Bearer <Supabase JWT> on the Storage request */
+async function hardAuthUpload(bucket: string, path: string, file: File) {
+  const { data: sess } = await supabase.auth.getSession()
+  const token = sess?.session?.access_token
+  if (!token) throw new Error('No Supabase session token found')
+
+  const res = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/${encodeURIComponent(bucket)}/${path}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`, // ✅ ensure owner_id is the auth.uid() UUID
+        'x-upsert': 'false',
+        'cache-control': '3600',
+        'content-type': file.type || 'application/octet-stream',
+      },
+      body: file,
+    }
+  )
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Storage upload failed (${res.status}): ${text || res.statusText}`)
+  }
 }
 
 export default function AddBusiness() {
@@ -38,6 +79,7 @@ export default function AddBusiness() {
     offers_delivery: false,
     hours: defaultHours,
   })
+
   const [photo, setPhoto] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -50,12 +92,10 @@ export default function AddBusiness() {
     }))
   }
 
-  // Small helper
   function normalizeWebsite(input: string) {
     if (!input) return ''
     const trimmed = input.trim()
-    if (/^https?:\/\//i.test(trimmed)) return trimmed
-    return `https://${trimmed}`
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -70,13 +110,11 @@ export default function AddBusiness() {
       if (getUserErr || !userData?.user) {
         throw new Error('Please sign in to add a business.')
       }
-
-      // Optional: sanity check our hook vs Supabase
       if (user && user.id !== userData.user.id) {
         throw new Error('Your session is stale. Please sign in again.')
       }
 
-      // ---- 1) CREATE LISTING (DB trigger fills owner_id + status='pending') ----
+      // ---- 1) CREATE LISTING (trigger fills owner_id + status='pending') ----
       const listingInsert = {
         name: form.name.trim(),
         city: form.city.trim() || null,
@@ -104,56 +142,25 @@ export default function AddBusiness() {
         .single()
 
       if (lerr) {
-        // Common RLS codes
-        if (lerr.code === '42501') {
-          throw new Error('Permission denied by security policy. Please sign in and try again.')
-        }
-        // FK protection (shouldn’t happen with our trigger)
-        if (lerr.code === '23503') {
-          throw new Error('Your session may have expired. Please sign in again.')
-        }
+        if (lerr.code === '42501') throw new Error('Permission denied by security policy. Please sign in and try again.')
+        if (lerr.code === '23503') throw new Error('Your session may have expired. Please sign in again.')
         throw lerr
       }
 
       // ---- 2) UPLOAD PHOTO (optional) ----
       if (photo) {
-        const path = `${listing.id}/${crypto.randomUUID()}-${photo.name}`
-        const { error: perr } = await supabase
-          .storage
-          .from('listing-photos')
-          .upload(path, photo, {
-            upsert: false,
-            cacheControl: '3600',
-            contentType: photo.type || 'image/jpeg',
-          })
-        if (perr) {
-          // If filename collision (rare), try once more with a new UUID
-          if ((perr as any)?.statusCode === '409') {
-            const retryPath = `${listing.id}/${crypto.randomUUID()}-${photo.name}`
-            const { error: perr2 } = await supabase
-              .storage
-              .from('listing-photos')
-              .upload(retryPath, photo, {
-                upsert: false,
-                cacheControl: '3600',
-                contentType: photo.type || 'image/jpeg',
-              })
-            if (perr2) throw perr2
-            await supabase.from('photos').insert({
-              listing_id: listing.id,
-              storage_path: retryPath,
-              is_primary: true,
-            })
-          } else {
-            throw perr
-          }
-        } else {
-          await supabase.from('photos').insert({
-            listing_id: listing.id,
-            storage_path: path,
-            is_primary: true,
-          })
-        }
+        const filename = safeFilename(photo.name)
+        const path = `${listing.id}/${crypto.randomUUID()}-${filename}`
+
+        // Force-Auth upload to guarantee a real Supabase JWT is used
+        await hardAuthUpload('listing-photos', path, photo)
+
+        const { error: perr2 } = await supabase.from('photos').insert({
+          listing_id: listing.id,
+          storage_path: path,
+          is_primary: true,
+        })
+        if (perr2) throw perr2
       }
 
       // ---- 3) PAYMENT (mock or real) ----
@@ -162,28 +169,28 @@ export default function AddBusiness() {
         setSuccess('Listing created and activated (demo mode).')
         setLoading(false)
         return
-      } else {
-        const api = import.meta.env.VITE_API_BASE_URL
-        if (!api) {
-          setSuccess('Listing created. Awaiting payment configuration.')
-          setLoading(false)
-          return
-        }
-        const res = await fetch(`${api}/api/create-checkout`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            listingId: listing.id,
-            amountCents: 300,
-            description: `Basic listing fee for ${form.name}`,
-            redirectUrl: window.location.origin + '/account',
-          }),
-        })
-        if (!res.ok) throw new Error('Failed to create checkout link')
-        const { url } = await res.json()
-        window.location.href = url
+      }
+
+      const api = import.meta.env.VITE_API_BASE_URL
+      if (!api) {
+        setSuccess('Listing created. Payment not yet configured.')
+        setLoading(false)
         return
       }
+
+      const res = await fetch(`${api}/api/create-checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          listingId: listing.id,
+          amountCents: 300,
+          description: `Basic listing fee for ${form.name}`,
+          redirectUrl: window.location.origin + '/account',
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to create checkout link')
+      const { url } = await res.json()
+      window.location.href = url
     } catch (err: any) {
       console.error('Submission error:', err)
       if (err?.message?.includes('Please sign in')) {
