@@ -42,26 +42,16 @@ export async function hardAuthUpload(bucket: string, path: string, file: File) {
   
   // Check if user ID is a valid UUID format
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  if (!uuidRegex.test(userId)) {
-    throw new Error(`Invalid user ID format: "${userId}". Please ensure you are properly authenticated with a valid Supabase account.`)
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: false
+    })
+
+  if (error) {
+    throw new Error(`Storage upload failed: ${error.message}`)
   }
 
-  const res = await fetch(
-    `${SUPABASE_URL}/storage/v1/object/${encodeURIComponent(bucket)}/${path}`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`, // ✅ ensure owner_id is the auth.uid() UUID
-        'x-upsert': 'false',
-        'cache-control': '3600',
-        'content-type': file.type || 'application/octet-stream',
-      },
-      body: file,
-    }
-  )
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`Storage upload failed (${res.status}): ${text || res.statusText}`)
-  }
+  return data
 }
