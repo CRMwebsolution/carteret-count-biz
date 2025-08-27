@@ -8,11 +8,49 @@ const MOCK = import.meta.env.VITE_MOCK_PAYMENTS === 'true'
 
 export default function AddBusiness(){
   const { user } = useAuth()
-  const [form, setForm] = useState<any>({ name: '', city: '', phone: '', website: '', description: '' })
+  const [form, setForm] = useState<any>({ 
+    name: '', 
+    city: '', 
+    phone: '', 
+    website: '', 
+    description: '',
+    email: '',
+    address_line1: '',
+    address_line2: '',
+    state: 'NC',
+    postal_code: '',
+    price_level: 1,
+    is_veteran_owned: false,
+    is_family_owned: false,
+    accepts_cards: true,
+    offers_delivery: false,
+    hours: {
+      monday: { open: '09:00', close: '17:00', is_closed: false },
+      tuesday: { open: '09:00', close: '17:00', is_closed: false },
+      wednesday: { open: '09:00', close: '17:00', is_closed: false },
+      thursday: { open: '09:00', close: '17:00', is_closed: false },
+      friday: { open: '09:00', close: '17:00', is_closed: false },
+      saturday: { open: '09:00', close: '17:00', is_closed: false },
+      sunday: { open: '09:00', close: '17:00', is_closed: true }
+    }
+  })
   const [photo, setPhoto] = useState<File|null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string| null>(null)
   const [success, setSuccess] = useState<string| null>(null)
+
+  function updateHours(day: string, field: string, value: any) {
+    setForm({
+      ...form,
+      hours: {
+        ...form.hours,
+        [day]: {
+          ...form.hours[day],
+          [field]: value
+        }
+      }
+    })
+  }
 
   async function handleSubmit(e: React.FormEvent){
     e.preventDefault()
@@ -39,6 +77,17 @@ export default function AddBusiness(){
         phone: form.phone,
         website: form.website,
         description: form.description,
+        email: form.email,
+        address_line1: form.address_line1,
+        address_line2: form.address_line2,
+        state: form.state,
+        postal_code: form.postal_code,
+        price_level: form.price_level,
+        is_veteran_owned: form.is_veteran_owned,
+        is_family_owned: form.is_family_owned,
+        accepts_cards: form.accepts_cards,
+        offers_delivery: form.offers_delivery,
+        hours: form.hours,
         status: 'pending',
         ...(validUserId && { owner_id: validUserId }),
       }
@@ -107,6 +156,7 @@ export default function AddBusiness(){
           value={form.name}
           onChange={e=>setForm({...form, name:e.target.value})}
         />
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input
             placeholder="City"
@@ -121,18 +171,152 @@ export default function AddBusiness(){
             onChange={e=>setForm({...form, phone:e.target.value})}
           />
         </div>
-        <input
-          placeholder="Website (https://...)"
-          className="w-full rounded-xl border px-4 py-3 text-base"
-          value={form.website}
-          onChange={e=>setForm({...form, website:e.target.value})}
-        />
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full rounded-xl border px-4 py-3 text-base"
+            value={form.email}
+            onChange={e=>setForm({...form, email:e.target.value})}
+          />
+          <input
+            placeholder="Website (https://...)"
+            className="w-full rounded-xl border px-4 py-3 text-base"
+            value={form.website}
+            onChange={e=>setForm({...form, website:e.target.value})}
+          />
+        </div>
+        
+        <div className="space-y-3">
+          <h3 className="text-lg font-medium">Address</h3>
+          <input
+            placeholder="Street Address"
+            className="w-full rounded-xl border px-4 py-3 text-base"
+            value={form.address_line1}
+            onChange={e=>setForm({...form, address_line1:e.target.value})}
+          />
+          <input
+            placeholder="Address Line 2 (optional)"
+            className="w-full rounded-xl border px-4 py-3 text-base"
+            value={form.address_line2}
+            onChange={e=>setForm({...form, address_line2:e.target.value})}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <select
+              className="w-full rounded-xl border px-4 py-3 text-base"
+              value={form.state}
+              onChange={e=>setForm({...form, state:e.target.value})}
+            >
+              <option value="NC">North Carolina</option>
+              <option value="SC">South Carolina</option>
+              <option value="VA">Virginia</option>
+            </select>
+            <input
+              placeholder="ZIP Code"
+              className="w-full rounded-xl border px-4 py-3 text-base"
+              value={form.postal_code}
+              onChange={e=>setForm({...form, postal_code:e.target.value})}
+            />
+            <select
+              className="w-full rounded-xl border px-4 py-3 text-base"
+              value={form.price_level}
+              onChange={e=>setForm({...form, price_level:parseInt(e.target.value)})}
+            >
+              <option value={1}>$ - Budget</option>
+              <option value={2}>$$ - Moderate</option>
+              <option value={3}>$$$ - Expensive</option>
+              <option value={4}>$$$$ - Very Expensive</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          <h3 className="text-lg font-medium">Hours of Operation</h3>
+          <div className="space-y-2">
+            {Object.entries(form.hours).map(([day, dayHours]: [string, any]) => (
+              <div key={day} className="flex items-center gap-3 p-3 border rounded-xl">
+                <div className="w-20 text-sm font-medium capitalize">{day}</div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={dayHours.is_closed}
+                    onChange={e => updateHours(day, 'is_closed', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Closed</span>
+                </label>
+                {!dayHours.is_closed && (
+                  <>
+                    <input
+                      type="time"
+                      value={dayHours.open}
+                      onChange={e => updateHours(day, 'open', e.target.value)}
+                      className="rounded border px-2 py-1 text-sm"
+                    />
+                    <span className="text-sm text-gray-500">to</span>
+                    <input
+                      type="time"
+                      value={dayHours.close}
+                      onChange={e => updateHours(day, 'close', e.target.value)}
+                      className="rounded border px-2 py-1 text-sm"
+                    />
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          <h3 className="text-lg font-medium">Business Attributes</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="flex items-center gap-2 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={form.is_veteran_owned}
+                onChange={e=>setForm({...form, is_veteran_owned:e.target.checked})}
+                className="rounded"
+              />
+              <span className="text-sm">Veteran Owned</span>
+            </label>
+            <label className="flex items-center gap-2 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={form.is_family_owned}
+                onChange={e=>setForm({...form, is_family_owned:e.target.checked})}
+                className="rounded"
+              />
+              <span className="text-sm">Family Owned</span>
+            </label>
+            <label className="flex items-center gap-2 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={form.accepts_cards}
+                onChange={e=>setForm({...form, accepts_cards:e.target.checked})}
+                className="rounded"
+              />
+              <span className="text-sm">Accepts Cards</span>
+            </label>
+            <label className="flex items-center gap-2 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={form.offers_delivery}
+                onChange={e=>setForm({...form, offers_delivery:e.target.checked})}
+                className="rounded"
+              />
+              <span className="text-sm">Offers Delivery</span>
+            </label>
+          </div>
+        </div>
+        
         <textarea
           placeholder="Short description"
           className="w-full rounded-xl border px-4 py-3 min-h-28 text-base resize-y"
           value={form.description}
           onChange={e=>setForm({...form, description:e.target.value})}
         />
+        
         <div>
           <label className="text-sm text-gray-600 block mb-1">Primary photo (optional)</label>
           <input
@@ -142,6 +326,7 @@ export default function AddBusiness(){
             onChange={e=>setPhoto(e.target.files?.[0] || null)}
           />
         </div>
+        
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {success && <p className="text-green-700 text-sm">{success}</p>}
         <button
