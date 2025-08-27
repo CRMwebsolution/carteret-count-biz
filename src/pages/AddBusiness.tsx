@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { supabase, hardAuthUpload, safeFilename } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
 const MOCK = import.meta.env.VITE_MOCK_PAYMENTS === 'true'
@@ -15,6 +15,19 @@ const defaultHours: Hours = {
   friday: { open: '09:00', close: '17:00', is_closed: false },
   saturday: { open: '09:00', close: '17:00', is_closed: false },
   sunday: { open: '09:00', close: '17:00', is_closed: true },
+}
+
+/** Make filenames safe for URLs & storage */
+function safeFilename(name: string) {
+  const idx = name.lastIndexOf('.')
+  const baseRaw = idx === -1 ? name : name.slice(0, idx)
+  const ext = idx === -1 ? '' : name.slice(idx)
+  const cleanedBase = baseRaw
+    .normalize('NFKD')
+    .replace(/[^\w\-]+/g, '-') // non-word to dash
+    .replace(/-+/g, '-')       // collapse dashes
+    .replace(/^-|-$/g, '')     // trim leading/trailing dashes
+  return `${cleanedBase || 'file'}${ext}`
 }
 
 export default function AddBusiness() {
@@ -106,14 +119,29 @@ export default function AddBusiness() {
         throw lerr
       }
 
-      // ---- 2) UPLOAD PHOTO (optional) ----
+      // ---- 2) UPLOAD PHOTO (optional) via SIGNED UPLOAD URL ----
       if (photo) {
         const filename = safeFilename(photo.name)
         const path = `${listing.id}/${crypto.randomUUID()}-${filename}`
 
-        // Force-Auth upload to guarantee a real Supabase JWT is used
-        await hardAuthUpload('listing-photos', path, photo)
+        // 2a) Create a signed upload URL for that exact path
+        const { data: signed, error: signErr } = await supabase
+          .storage
+          .from('listing-photos')
+          .createSignedUploadUrl(path)
+        if (signErr) throw signErr
 
+        // 2b) Upload the file to the signed URL (no Authorization header to get rewritten)
+        const { error: uploadErr } = await supabase
+          .storage
+          .from('listing-photos')
+          .uploadToSignedUrl(signed.path, signed.token, photo, {
+            contentType: photo.type || 'image/jpeg',
+            upsert: false,
+          })
+        if (uploadErr) throw uploadErr
+
+        // 2c) Record in photos table (for primary image display, etc.)
         const { error: perr2 } = await supabase.from('photos').insert({
           listing_id: listing.id,
           storage_path: path,
