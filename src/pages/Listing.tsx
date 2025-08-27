@@ -88,7 +88,17 @@ export default function Listing(){
                     
                     return Object.entries(hours).map(([day, time]) => (
                       <div key={day}>
-                        <span className="font-medium">{dayNames[day as keyof typeof dayNames] || day}:</span> {time || 'Closed'}
+                        <span className="font-medium">{dayNames[day as keyof typeof dayNames] || day}:</span> {
+                          (() => {
+                            if (!time) return 'Closed';
+                            if (typeof time === 'object' && time !== null) {
+                              if (time.is_closed) return 'Closed';
+                              if (time.open && time.close) return `${time.open} - ${time.close}`;
+                              return 'Closed';
+                            }
+                            return time;
+                          })()
+                        }
                       </div>
                     ));
                   } catch (e) {
