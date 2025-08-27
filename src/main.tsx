@@ -9,6 +9,7 @@ import AddBusiness from './pages/AddBusiness'
 import Listing from './pages/Listing'
 import Verify from './pages/Verify'
 import Account from './pages/Account'
+import Admin from './pages/Admin'
 
 const router = createBrowserRouter([
   { path: '/', element: <App />, children: [
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
     { path: 'verify/:id', element: <Verify /> },
     { path: 'listing/:id', element: <Listing /> },
     { path: 'account', element: <Account /> },
+    { path: 'admin', element: <Admin /> },
   ]}
 ])
 

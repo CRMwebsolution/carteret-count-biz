@@ -40,6 +40,9 @@ export default function Navbar() {
             user ? (
               <div className="flex items-center gap-4">
                 <NavLink to="/account" className={({isActive}) => isActive ? 'text-brand font-medium' : 'text-gray-700'}>Account</NavLink>
+                {(user.role === 'admin' || user.email?.includes('admin')) && (
+                  <NavLink to="/admin" className={({isActive}) => isActive ? 'text-brand font-medium' : 'text-gray-700'}>Admin</NavLink>
+                )}
                 <button
                   onClick={handleSignOut}
                   className="text-gray-700 hover:text-brand transition-colors"
@@ -110,6 +113,15 @@ export default function Navbar() {
                     >
                       Account
                     </NavLink>
+                    {(user.role === 'admin' || user.email?.includes('admin')) && (
+                      <NavLink 
+                        to="/admin" 
+                        className={({isActive}) => `block py-2 ${isActive ? 'text-brand font-medium' : 'text-gray-700'}`}
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Admin
+                      </NavLink>
+                    )}
                     <button
                       onClick={handleSignOut}
                       className="block py-2 text-gray-700 hover:text-brand transition-colors w-full text-left"
