@@ -63,7 +63,6 @@ export default function AddBusiness(){
         const freshUser = await getCurrentUser()
         if (!freshUser || freshUser.id !== user.id) {
           setError('Your session has expired. Please sign in again.')
-          await signOut()
           setLoading(false)
           return
         }
@@ -135,8 +134,6 @@ export default function AddBusiness(){
       // Check for foreign key constraint violation (stale user session)
       if (err.code === '23503' && err.message?.includes('listings_owner_id_fkey')) {
         setError('Your session has expired. Please sign in again.')
-        // Clear the stale session
-        await signOut()
       } else {
         setError(err.message || 'Something went wrong')
       }
