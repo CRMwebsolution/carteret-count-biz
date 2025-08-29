@@ -1,44 +1,77 @@
-import { useState } from 'react'
-import { signInWithPassword, signUp } from '../lib/auth'
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
-interface AuthModalProps {
-  isOpen: boolean
-  onClose: () => void
-  mode: 'signin' | 'signup'
-  onModeChange: (mode: 'signin' | 'signup') => void
-}
+type Mode = 'signin' | 'signup';
 
-export default function AuthModal({ isOpen, onClose, mode, onModeChange }: AuthModalProps) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+type Props = {
+  isOpen: boolean;
+  onClose: () => void;
+  mode: Mode;
+  onModeChange: (mode: Mode) => void;
+};
 
-  if (!isOpen) return null
+export default function AuthModal({ isOpen, onClose, mode, onModeChange }: Props) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
+  // Prevent background scroll when modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, [isOpen]);
 
+  if (!isOpen) return null;
+
+  async function handleSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    setSuccess(null);
+    setLoading(true);
     try {
-      if (mode === 'signup') {
-        await signUp(email, password)
-        setSuccess('Account created! Please check your email to verify your account.')
-      } else {
-        await signInWithPassword(email, password)
-        setSuccess('Signed in successfully!')
-        setTimeout(() => {
-          onClose()
-          window.location.reload()
-        }, 1000)
-      }
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong')
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+
+      // AuthProvider's onAuthStateChange will update the Navbar
+      onClose();
+    } catch (e: any) {
+      setErr(e?.message ?? 'Sign in failed');
     } finally {
-      setLoading(false)
+      setLoading(false);
+    }
+  }
+
+  async function handleSignUp(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    setSuccess(null);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          // Optional metadata—adjust to your needs
+          data: { full_name: fullName },
+          // Important so session/redirect stays on the same origin
+          emailRedirectTo: window.location.origin,
+        },
+      });
+      if (error) throw error;
+
+      setSuccess('Account created! Check your email to verify, then sign in.');
+      onModeChange('signin');
+    } catch (e: any) {
+      setErr(e?.message ?? 'Sign up failed');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -48,6 +81,7 @@ export default function AuthModal({ isOpen, onClose, mode, onModeChange }: AuthM
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          aria-label="Close"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -58,11 +92,23 @@ export default function AuthModal({ isOpen, onClose, mode, onModeChange }: AuthM
           {mode === 'signup' ? 'Create Account' : 'Sign In'}
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} className="space-y-4">
+          {mode === 'signup' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full rounded-xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
+                placeholder="Jane Doe"
+                autoComplete="name"
+              />
+            </div>
+          )}
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
               required
@@ -70,13 +116,12 @@ export default function AuthModal({ isOpen, onClose, mode, onModeChange }: AuthM
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
               placeholder="your@email.com"
+              autoComplete="email"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input
               type="password"
               required
@@ -84,13 +129,14 @@ export default function AuthModal({ isOpen, onClose, mode, onModeChange }: AuthM
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
               placeholder="••••••••"
+              autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
               minLength={6}
             />
           </div>
 
-          {error && (
+          {err && (
             <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-              {error}
+              {err}
             </div>
           )}
 
@@ -114,13 +160,12 @@ export default function AuthModal({ isOpen, onClose, mode, onModeChange }: AuthM
             onClick={() => onModeChange(mode === 'signup' ? 'signin' : 'signup')}
             className="text-brand hover:underline text-sm"
           >
-            {mode === 'signup' 
-              ? 'Already have an account? Sign in' 
-              : "Don't have an account? Sign up"
-            }
+            {mode === 'signup'
+              ? 'Already have an account? Sign in'
+              : "Don't have an account? Sign up"}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }
