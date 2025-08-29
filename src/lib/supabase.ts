@@ -30,23 +30,23 @@ export function safeFilename(name: string) {
   return `${cleanedBase || 'file'}${ext}`
 }
 
-/** Force Authorization: Bearer <Supabase JWT> on the Storage request */
+/**
+ * Upload using the authenticated Supabase client.
+ * NOTE: Keep this if you’ll re-enable photos later.
+ */
 export async function hardAuthUpload(bucket: string, path: string, file: File) {
   const { data: sess } = await supabase.auth.getSession()
   const token = sess?.session?.access_token
   if (!token) throw new Error('No Supabase session token found')
 
-  // Validate that the user ID is a proper UUID
   const userId = sess?.session?.user?.id
   if (!userId) throw new Error('No user ID found in session')
-  
-  // Check if user ID is a valid UUID format
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
   const { data, error } = await supabase.storage
     .from(bucket)
     .upload(path, file, {
       cacheControl: '3600',
-      upsert: false
+      upsert: false,
     })
 
   if (error) {
@@ -54,4 +54,54 @@ export async function hardAuthUpload(bucket: string, path: string, file: File) {
   }
 
   return data
+}
+
+/**
+ * Rock-solid sign-out:
+ * - Calls supabase.auth.signOut (local scope)
+ * - Closes realtime channels
+ * - Removes lingering sb-*-auth-token keys
+ * - Clears sessionStorage
+ * - Hard redirect/reload to prevent rehydration
+ */
+export async function hardSignOut(opts?: { redirectTo?: string }) {
+  try {
+    await supabase.auth.signOut({ scope: 'local' })
+  } catch {
+    // ignore signOut errors
+  }
+
+  // Close realtime channels defensively
+  try {
+    // @ts-ignore (older types)
+    if (supabase?.realtime?.channels) {
+      // @ts-ignore
+      for (const ch of supabase.realtime.channels) {
+        try { await ch.unsubscribe() } catch {}
+      }
+      // @ts-ignore
+      try { await supabase.realtime.disconnect() } catch {}
+    }
+  } catch {}
+
+  // Remove any persisted auth tokens that can rehydrate a session
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        localStorage.removeItem(key)
+      }
+    }
+  } catch {}
+
+  try { sessionStorage.clear() } catch {}
+
+  // Optional: clear any of your own app caches here
+  // localStorage.removeItem('APP_USER_CACHE')
+
+  const target = opts?.redirectTo ?? '/'
+  if (location.pathname !== target) {
+    location.assign(target)
+  } else {
+    location.reload()
+  }
 }
