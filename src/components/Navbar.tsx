@@ -2,6 +2,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../providers/AuthProvider'
 import AuthModal from './AuthModal'
+import { isAdminEmail } from '../lib/adminConfig'
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -40,7 +41,7 @@ export default function Navbar() {
               user ? (
                 <div className="flex items-center gap-4">
                   <NavLink to="/account" className={({isActive}) => isActive ? 'text-brand font-medium' : 'text-gray-700'}>Account</NavLink>
-                  {(user.role === 'admin' || user.email?.includes('admin')) && (
+                  {isAdminEmail(user.email) && (
                     <NavLink to="/admin" className={({isActive}) => isActive ? 'text-brand font-medium' : 'text-gray-700'}>Admin</NavLink>
                   )}
                   <button
@@ -113,7 +114,7 @@ export default function Navbar() {
                     >
                       Account
                     </NavLink>
-                    {(user.role === 'admin' || user.email?.includes('admin')) && (
+                    {isAdminEmail(user.email) && (
                       <NavLink 
                         to="/admin" 
                         className={({isActive}) => `block py-2 ${isActive ? 'text-brand font-medium' : 'text-gray-700'}`}

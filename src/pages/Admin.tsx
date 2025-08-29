@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../providers/AuthProvider'
 import { supabase } from '../lib/supabase'
+import { isAdminEmail } from '../lib/adminConfig'
 
 type Listing = {
   id: string
@@ -48,7 +49,7 @@ export default function Admin() {
   const [error, setError] = useState<string | null>(null)
 
   // Check if user is admin
-  const isAdmin = user?.role === 'admin' || user?.email?.includes('admin')
+  const isAdmin = isAdminEmail(user?.email)
 
   useEffect(() => {
     if (!authLoading && user && isAdmin) {
@@ -220,9 +221,8 @@ export default function Admin() {
         <h3 className="font-bold text-yellow-800 mb-2">Debug Info (remove this later):</h3>
         <p className="text-sm">Auth Loading: {String(authLoading)}</p>
         <p className="text-sm">User: {user ? user.email : 'None'}</p>
-        <p className="text-sm">User Role: {user?.role || 'No role'}</p>
         <p className="text-sm">Is Admin: {String(isAdmin)}</p>
-        <p className="text-sm">Admin Check: {String(user?.role === 'admin')} || {String(user?.email?.includes('admin'))}</p>
+        <p className="text-sm">Admin Check: Email in admin list: {String(isAdminEmail(user?.email))}</p>
       </div>
       {/* End temporary debug info */}
 
