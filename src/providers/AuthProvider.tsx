@@ -2,9 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, hardSignOut } from '../lib/supabase'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
-type User = SupabaseUser & {
-  role?: string
-}
+type User = SupabaseUser & { role?: string }
 
 type AuthContextType = {
   user: User | null
@@ -22,19 +20,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Helper: fetch role from public.users, create row if missing
+  // Fetch role (creates 'users' row if missing)
   const fetchUserWithRole = async (authUser: SupabaseUser): Promise<User> => {
     try {
-      const { data: userData, error } = await supabase
+      const { data: row, error } = await supabase
         .from('users')
         .select('role')
         .eq('id', authUser.id)
         .single()
 
       if (error) {
-        // If not found, create with default 'user' role
+        // If not found, create a default row
         if ((error as any)?.code === 'PGRST116') {
-          const { data: newUserData, error: createError } = await supabase
+          const { data: created, error: cErr } = await supabase
             .from('users')
             .insert({
               id: authUser.id,
@@ -44,20 +42,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             })
             .select('role')
             .single()
-          if (createError) {
-            console.error('Error creating user record:', createError)
+          if (cErr) {
+            console.error('Error creating users row:', cErr)
             return { ...authUser, role: 'user' }
           }
-          return { ...authUser, role: newUserData?.role || 'user' }
+          return { ...authUser, role: created?.role || 'user' }
         }
-
-        console.error('Error fetching user role:', error)
+        console.error('Error loading role:', error)
         return { ...authUser, role: 'user' }
       }
 
-      return { ...authUser, role: userData?.role || 'user' }
-    } catch (err) {
-      console.error('Exception fetching user role:', err)
+      return { ...authUser, role: row?.role || 'user' }
+    } catch (e) {
+      console.error('fetchUserWithRole exception:', e)
       return { ...authUser, role: 'user' }
     }
   }
@@ -66,9 +63,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let canceled = false
 
-    const load = async () => {
+    const bootstrap = async () => {
       try {
-        const { data: authData, error } = await supabase.auth.getUser()
+        const { data, error } = await supabase.auth.getUser()
         if (error) {
           if (!canceled) {
             setUser(null)
@@ -76,16 +73,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           return
         }
-
-        if (!canceled && authData?.user) {
-          const userWithRole = await fetchUserWithRole(authData.user)
-          if (!canceled) setUser(userWithRole)
+        if (!canceled && data?.user) {
+          const withRole = await fetchUserWithRole(data.user)
+          if (!canceled) setUser(withRole)
         } else if (!canceled) {
           setUser(null)
         }
-
         if (!canceled) setLoading(false)
-      } catch (err) {
+      } catch (e) {
         if (!canceled) {
           setUser(null)
           setLoading(false)
@@ -93,14 +88,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    load()
+    bootstrap()
 
-    // Auth state changes
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_evt, session) => {
       if (canceled) return
       if (session?.user) {
-        const userWithRole = await fetchUserWithRole(session.user)
-        if (!canceled) setUser(userWithRole)
+        const withRole = await fetchUserWithRole(session.user)
+        if (!canceled) setUser(withRole)
       } else {
         if (!canceled) setUser(null)
       }
@@ -113,8 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [])
 
-  // Hardened sign-out using helper (clears tokens + reloads)
   const signOut = async () => {
+    // Hardened logout: clears sb-* tokens and reloads
     await hardSignOut({ redirectTo: '/' })
     try { setUser(null) } catch {}
   }
