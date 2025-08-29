@@ -1,8 +1,7 @@
+// src/pages/AddBusiness.tsx
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../hooks/useAuth'
-
-const MOCK = import.meta.env.VITE_MOCK_PAYMENTS === 'true'
+import { useAuth } from '../providers/AuthProvider' // ← use the global provider
 
 type HoursDay = { open: string; close: string; is_closed: boolean }
 type Hours = Record<string, HoursDay>
@@ -17,7 +16,7 @@ const defaultHours: Hours = {
   sunday: { open: '09:00', close: '17:00', is_closed: true },
 }
 
-/** Make filenames safe for URLs & storage */
+/** Make filenames safe for URLs & storage (kept if you later add image uploads) */
 function safeFilename(name: string) {
   const idx = name.lastIndexOf('.')
   const baseRaw = idx === -1 ? name : name.slice(0, idx)
@@ -54,7 +53,6 @@ export default function AddBusiness() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
 
   function updateHours(day: string, field: keyof HoursDay, value: any) {
     setForm((f: any) => ({
@@ -73,10 +71,9 @@ export default function AddBusiness() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    setSuccess(null)
 
     try {
-      // ---- AUTH REQUIRED (matches production RLS) ----
+      // ---- AUTH REQUIRED (RLS enforces this too) ----
       const { data: userData, error: getUserErr } = await supabase.auth.getUser()
       if (getUserErr || !userData?.user) {
         throw new Error('Please sign in to add a business.')
@@ -85,8 +82,9 @@ export default function AddBusiness() {
         throw new Error('Your session is stale. Please sign in again.')
       }
 
-      // ---- 1) CREATE LISTING (trigger fills owner_id + status='pending') ----
+      // ---- 1) CREATE LISTING (explicitly set user_id to satisfy RLS) ----
       const listingInsert = {
+        user_id: userData.user.id, // ← important for RLS with_check
         name: form.name.trim(),
         city: form.city.trim() || null,
         phone: form.phone.trim() || null,
@@ -103,7 +101,7 @@ export default function AddBusiness() {
         accepts_cards: !!form.accepts_cards,
         offers_delivery: !!form.offers_delivery,
         hours: form.hours as Hours,
-        // DO NOT send owner_id or status; trigger handles these
+        // status defaults to 'pending' in DB; admin/payment will activate
       }
 
       const { data: listing, error: lerr } = await supabase
@@ -118,19 +116,10 @@ export default function AddBusiness() {
         throw lerr
       }
 
-      // ---- 2) PAYMENT (mock or real) ----
-      if (MOCK) {
-        await supabase.from('listings').update({ status: 'active' }).eq('id', listing.id)
-        setSuccess('Listing created and activated (demo mode).')
-        setLoading(false)
-        return
-      }
-
+      // ---- 2) CREATE CHECKOUT (PRODUCTION) ----
       const api = import.meta.env.VITE_API_BASE_URL
       if (!api) {
-        setSuccess('Listing created. Payment not yet configured.')
-        setLoading(false)
-        return
+        throw new Error('Payment is not configured. Set VITE_API_BASE_URL in your environment.')
       }
 
       const res = await fetch(`${api}/api/create-checkout`, {
@@ -138,13 +127,19 @@ export default function AddBusiness() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           listingId: listing.id,
-          amountCents: 300,
+          amountCents: 300, // TODO: adjust pricing as needed
           description: `Basic listing fee for ${form.name}`,
           redirectUrl: window.location.origin + '/account',
         }),
       })
-      if (!res.ok) throw new Error('Failed to create checkout link')
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '')
+        throw new Error(`Failed to create checkout link. ${txt || ''}`.trim())
+      }
+
       const { url } = await res.json()
+      if (!url) throw new Error('Payment provider did not return a checkout URL.')
       window.location.href = url
     } catch (err: any) {
       console.error('Submission error:', err)
@@ -169,12 +164,6 @@ export default function AddBusiness() {
       {!user && (
         <div className="mb-4 rounded-xl border bg-amber-50 text-amber-800 p-3 text-sm">
           You must be signed in to add a listing.
-        </div>
-      )}
-
-      {MOCK && (
-        <div className="mb-4 rounded-xl border bg-yellow-50 text-yellow-800 p-3 text-sm">
-          Demo mode is active (VITE_MOCK_PAYMENTS=true). Submissions activate without payment.
         </div>
       )}
 
@@ -348,18 +337,17 @@ export default function AddBusiness() {
         />
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
-        {success && <p className="text-green-700 text-sm">{success}</p>}
 
         <button
           disabled={loading || !user}
           className="w-full sm:w-auto rounded-xl bg-brand text-white px-5 py-3 hover:bg-brand-dark disabled:opacity-50 text-base font-medium"
         >
-          {loading ? 'Processing…' : (MOCK ? 'Create (Demo Mode)' : 'Continue to Payment')}
+          {loading ? 'Processing…' : 'Continue to Payment'}
         </button>
       </form>
 
       <p className="text-sm text-gray-500 mt-4">
-        A small fee helps keep spam out. Your listing will go live after payment (or instantly in demo mode).
+        A small fee helps keep spam out. Your listing will go live after payment is confirmed.
       </p>
     </div>
   )
