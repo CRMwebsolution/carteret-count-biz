@@ -5,7 +5,7 @@ const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 export const supabase = createClient(SUPABASE_URL, anon, {
   auth: {
-    persistSession: true,      // keep JWT so Storage/DB are authenticated
+    persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
   },
@@ -15,7 +15,6 @@ export function storageUrl(bucket: string, path: string) {
   return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`
 }
 
-/** Make filenames safe for URLs & storage */
 export function safeFilename(name: string) {
   const idx = name.lastIndexOf('.')
   const baseRaw = idx === -1 ? name : name.slice(0, idx)
@@ -23,57 +22,36 @@ export function safeFilename(name: string) {
 
   const cleanedBase = baseRaw
     .normalize('NFKD')
-    .replace(/[^\w\-]+/g, '-') // non-word to dash
-    .replace(/-+/g, '-')       // collapse dashes
-    .replace(/^-|-$/g, '')     // trim leading/trailing dashes
+    .replace(/[^\w\-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
 
   return `${cleanedBase || 'file'}${ext}`
 }
 
-/**
- * Upload using the authenticated Supabase client.
- * NOTE: Keep this if you’ll re-enable photos later.
- */
+/** Authenticated Storage upload (keep for future photo support) */
 export async function hardAuthUpload(bucket: string, path: string, file: File) {
   const { data: sess } = await supabase.auth.getSession()
   const token = sess?.session?.access_token
   if (!token) throw new Error('No Supabase session token found')
-
   const userId = sess?.session?.user?.id
   if (!userId) throw new Error('No user ID found in session')
 
   const { data, error } = await supabase.storage
     .from(bucket)
-    .upload(path, file, {
-      cacheControl: '3600',
-      upsert: false,
-    })
+    .upload(path, file, { cacheControl: '3600', upsert: false })
 
-  if (error) {
-    throw new Error(`Storage upload failed: ${error.message}`)
-  }
-
+  if (error) throw new Error(`Storage upload failed: ${error.message}`)
   return data
 }
 
-/**
- * Rock-solid sign-out:
- * - Calls supabase.auth.signOut (local scope)
- * - Closes realtime channels
- * - Removes lingering sb-*-auth-token keys
- * - Clears sessionStorage
- * - Hard redirect/reload to prevent rehydration
- */
+/** Bulletproof sign-out + cleanup + hard redirect */
 export async function hardSignOut(opts?: { redirectTo?: string }) {
-  try {
-    await supabase.auth.signOut({ scope: 'local' })
-  } catch {
-    // ignore signOut errors
-  }
+  try { await supabase.auth.signOut({ scope: 'local' }) } catch {}
 
-  // Close realtime channels defensively
+  // Close realtime channels (defensive)
   try {
-    // @ts-ignore (older types)
+    // @ts-ignore
     if (supabase?.realtime?.channels) {
       // @ts-ignore
       for (const ch of supabase.realtime.channels) {
@@ -84,7 +62,7 @@ export async function hardSignOut(opts?: { redirectTo?: string }) {
     }
   } catch {}
 
-  // Remove any persisted auth tokens that can rehydrate a session
+  // Remove lingering auth tokens that can rehydrate a session
   try {
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
@@ -94,9 +72,6 @@ export async function hardSignOut(opts?: { redirectTo?: string }) {
   } catch {}
 
   try { sessionStorage.clear() } catch {}
-
-  // Optional: clear any of your own app caches here
-  // localStorage.removeItem('APP_USER_CACHE')
 
   const target = opts?.redirectTo ?? '/'
   if (location.pathname !== target) {
