@@ -27,9 +27,15 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   const { data, error } = await supabase.auth.getUser()
   console.log('getCurrentUser - supabase.auth.getUser() result:', { data, error })
   
-  if (error) return null
+  if (error) {
+    console.log('getCurrentUser - auth error, returning null')
+    return null
+  }
   
-  if (!data.user) return null
+  if (!data.user) {
+    console.log('getCurrentUser - no user in data, returning null')
+    return null
+  }
   
   // Fetch role from public.users table
   let userData = null
