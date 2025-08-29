@@ -116,31 +116,49 @@ export default function AddBusiness() {
         throw lerr
       }
 
-      // ---- 2) CREATE CHECKOUT (PRODUCTION) ----
-      const api = import.meta.env.VITE_API_BASE_URL
-      if (!api) {
-        throw new Error('Payment is not configured. Set VITE_API_BASE_URL in your environment.')
+      // ---- 2) HANDLE PAYMENT OR MOCK ACTIVATION ----
+      const mockPayments = import.meta.env.VITE_MOCK_PAYMENTS === 'true'
+      
+      if (mockPayments) {
+        // Mock payment mode - auto-activate the listing
+        const { error: updateError } = await supabase
+          .from('listings')
+          .update({ status: 'active' })
+          .eq('id', listing.id)
+        
+        if (updateError) {
+          throw new Error(`Failed to activate listing: ${updateError.message}`)
+        }
+        
+        // Redirect to account page
+        window.location.href = '/account'
+      } else {
+        // Production payment flow
+        const api = import.meta.env.VITE_API_BASE_URL
+        if (!api) {
+          throw new Error('Payment is not configured. Set VITE_API_BASE_URL in your environment.')
+        }
+
+        const res = await fetch(`${api}/api/create-checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            listingId: listing.id,
+            amountCents: 300, // TODO: adjust pricing as needed
+            description: `Basic listing fee for ${form.name}`,
+            redirectUrl: window.location.origin + '/account',
+          }),
+        })
+
+        if (!res.ok) {
+          const txt = await res.text().catch(() => '')
+          throw new Error(`Failed to create checkout link. ${txt || ''}`.trim())
+        }
+
+        const { url } = await res.json()
+        if (!url) throw new Error('Payment provider did not return a checkout URL.')
+        window.location.href = url
       }
-
-      const res = await fetch(`${api}/api/create-checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          listingId: listing.id,
-          amountCents: 300, // TODO: adjust pricing as needed
-          description: `Basic listing fee for ${form.name}`,
-          redirectUrl: window.location.origin + '/account',
-        }),
-      })
-
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '')
-        throw new Error(`Failed to create checkout link. ${txt || ''}`.trim())
-      }
-
-      const { url } = await res.json()
-      if (!url) throw new Error('Payment provider did not return a checkout URL.')
-      window.location.href = url
     } catch (err: any) {
       console.error('Submission error:', err)
       if (err?.message?.includes('Please sign in')) {
@@ -342,12 +360,15 @@ export default function AddBusiness() {
           disabled={loading || !user}
           className="w-full sm:w-auto rounded-xl bg-brand text-white px-5 py-3 hover:bg-brand-dark disabled:opacity-50 text-base font-medium"
         >
-          {loading ? 'Processing…' : 'Continue to Payment'}
+          {loading ? 'Processing…' : (import.meta.env.VITE_MOCK_PAYMENTS === 'true' ? 'Submit Listing' : 'Continue to Payment')}
         </button>
       </form>
 
       <p className="text-sm text-gray-500 mt-4">
-        A small fee helps keep spam out. Your listing will go live after payment is confirmed.
+        {import.meta.env.VITE_MOCK_PAYMENTS === 'true' 
+          ? 'Your listing will go live immediately after submission.' 
+          : 'A small fee helps keep spam out. Your listing will go live after payment is confirmed.'
+        }
       </p>
     </div>
   )
