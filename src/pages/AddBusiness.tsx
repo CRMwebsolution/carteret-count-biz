@@ -84,7 +84,7 @@ export default function AddBusiness() {
 
       // ---- 1) CREATE LISTING (explicitly set user_id to satisfy RLS) ----
       const listingInsert = {
-        user_id: userData.user.id, // ← important for RLS with_check
+        owner_id: userData.user.id, // ← important for RLS with_check
         name: form.name.trim(),
         city: form.city.trim() || null,
         phone: form.phone.trim() || null,
