@@ -1,3 +1,4 @@
+```typescript
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -39,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('Error fetching user role:', error);
         // If user doesn't exist in users table, create them
-        if (error.code === 'PGRST116') {
+        if (error.code === 'PGRST116') { // This error code typically means "no rows found"
           console.log('fetchUserWithRole: User not found in database, creating new record');
           const { data: newUserData, error: createError } = await supabase
             .from('users')
@@ -47,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               id: authUser.id,
               email: authUser.email || '',
               full_name: authUser.user_metadata?.full_name || null,
-              role: 'user'
+              role: 'user' // Default role for new users
             })
             .select('role')
             .single();
@@ -178,3 +179,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useAuth = () => useContext(AuthContext);
+```
