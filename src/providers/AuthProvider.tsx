@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import type { User } from '@supabase/supabase-js';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+
+type User = SupabaseUser & {
+  role?: string;
+}
 
 type AuthContextType = {
   user: User | null;
@@ -22,17 +26,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let canceled = false;
 
-    (async () => {
-      const { data } = await supabase.auth.getUser();
+    const loadUserWithRole = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      
+      if (!canceled && authData.user) {
+        // Fetch role from users table
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', authData.user.id)
+          .single();
+        
+        const userWithRole = {
+          ...authData.user,
+          role: userData?.role || 'user'
+        };
+        
+        setUser(userWithRole);
+      } else if (!canceled) {
+        setUser(null);
+      }
+      
       if (!canceled) {
-        setUser(data.user ?? null);
         setLoading(false);
       }
-    })();
+    };
+
+    loadUserWithRole();
 
     // Subscribe to auth changes
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        // Fetch role from users table
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+        
+        const userWithRole = {
+          ...session.user,
+          role: userData?.role || 'user'
+        };
+        
+        setUser(userWithRole);
+      } else {
+        setUser(null);
+      }
     });
 
     return () => {
