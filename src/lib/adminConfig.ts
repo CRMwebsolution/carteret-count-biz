@@ -1,7 +1,7 @@
 // Admin email configuration
 // Add email addresses here to grant admin access
 export const ADMIN_EMAILS = [
-  'admin@carteretlocal.com',
+  'cody@southernautomate.com',
   'your.email@example.com', // Replace with your actual admin email
   // Add more admin emails as needed
 ]
