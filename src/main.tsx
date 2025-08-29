@@ -10,6 +10,7 @@ import Listing from './pages/Listing'
 import Verify from './pages/Verify'
 import Account from './pages/Account'
 import Admin from './pages/Admin'
+import { AuthProvider } from './providers/AuthProvider'   // ⬅️ add this
 
 const router = createBrowserRouter([
   { path: '/', element: <App />, children: [
@@ -25,6 +26,8 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </React.StrictMode>
 )
