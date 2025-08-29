@@ -36,6 +36,10 @@ type User = {
 
 export default function Admin() {
   const { user, loading: authLoading } = useAuth()
+  
+  // Debug logging
+  console.log('Admin component debug:', { authLoading, user, userRole: user?.role, userEmail: user?.email })
+  
   const [activeTab, setActiveTab] = useState<'listings' | 'verifications' | 'users'>('listings')
   const [listings, setListings] = useState<Listing[]>([])
   const [verifications, setVerifications] = useState<Verification[]>([])
@@ -211,6 +215,17 @@ export default function Admin() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:py-12">
+      {/* Temporary debug info */}
+      <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <h3 className="font-bold text-yellow-800 mb-2">Debug Info (remove this later):</h3>
+        <p className="text-sm">Auth Loading: {String(authLoading)}</p>
+        <p className="text-sm">User: {user ? user.email : 'None'}</p>
+        <p className="text-sm">User Role: {user?.role || 'No role'}</p>
+        <p className="text-sm">Is Admin: {String(isAdmin)}</p>
+        <p className="text-sm">Admin Check: {String(user?.role === 'admin')} || {String(user?.email?.includes('admin'))}</p>
+      </div>
+      {/* End temporary debug info */}
+
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold mb-2">Admin Dashboard</h1>
         <p className="text-gray-600">Manage listings, verifications, and users</p>
