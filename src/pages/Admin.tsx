@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../providers/AuthProvider'
 import { supabase } from '../lib/supabase'
 
 type Listing = {
