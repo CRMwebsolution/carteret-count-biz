@@ -1,6 +1,6 @@
 import { Link, NavLink } from 'react-router-dom'
 import { useState } from 'react'
-import { useAuth } from '../providers/AuthProvider'  // using AuthProvider
+import { useAuth } from '../providers/AuthProvider'
 import AuthModal from './AuthModal'
 
 export default function Navbar() {
@@ -29,11 +29,6 @@ export default function Navbar() {
   return (
     <>
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b">
-        {/* 🔎 DEBUG LINE — remove later */}
-        <div className="text-[11px] px-4 py-1 bg-yellow-50 border-b text-yellow-900">
-          auth.loading={String(loading)} · user?={String(!!user)} · email={user?.email ?? '—'}
-        </div>
-
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="font-bold text-lg">Carteret Local</Link>
           
