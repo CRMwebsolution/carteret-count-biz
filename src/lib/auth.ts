@@ -32,11 +32,22 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   if (!data.user) return null
   
   // Fetch role from public.users table
-  const { data: userData } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', data.user.id)
-    .single()
+  let userData = null
+  try {
+    const { data: userDataResult, error: userDataError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', data.user.id)
+      .single()
+    
+    if (userDataError) {
+      console.error('getCurrentUser - error fetching userData:', userDataError)
+    } else {
+      userData = userDataResult
+    }
+  } catch (err) {
+    console.error('getCurrentUser - exception fetching userData:', err)
+  }
   
   console.log('getCurrentUser - userData from users table:', userData)
   
@@ -59,11 +70,22 @@ export function onAuthStateChange(
     }
     
     // Fetch role from public.users table
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', session.user.id)
-      .single()
+    let userData = null
+    try {
+      const { data: userDataResult, error: userDataError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+      
+      if (userDataError) {
+        console.error('onAuthStateChange - error fetching userData:', userDataError)
+      } else {
+        userData = userDataResult
+      }
+    } catch (err) {
+      console.error('onAuthStateChange - exception fetching userData:', err)
+    }
     
     console.log('onAuthStateChange - userData from users table:', userData)
     
