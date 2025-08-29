@@ -48,11 +48,36 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     
     if (userDataError) {
       console.error('getCurrentUser - error fetching userData:', userDataError)
+      // If user doesn't exist in users table, create them
+      if (userDataError.code === 'PGRST116') {
+        console.log('getCurrentUser - user not found in users table, creating user record')
+        const { data: newUserData, error: createError } = await supabase
+          .from('users')
+          .insert({
+            id: data.user.id,
+            email: data.user.email || '',
+            full_name: data.user.user_metadata?.full_name || null,
+            role: 'user'
+          })
+          .select('role')
+          .single()
+        
+        if (createError) {
+          console.error('getCurrentUser - error creating user record:', createError)
+          userData = { role: 'user' } // fallback
+        } else {
+          userData = newUserData
+          console.log('getCurrentUser - created new user record:', userData)
+        }
+      } else {
+        userData = { role: 'user' } // fallback for other errors
+      }
     } else {
       userData = userDataResult
     }
   } catch (err) {
     console.error('getCurrentUser - exception fetching userData:', err)
+    userData = { role: 'user' } // fallback
   }
   
   console.log('getCurrentUser - userData from users table:', userData)
@@ -86,11 +111,36 @@ export function onAuthStateChange(
       
       if (userDataError) {
         console.error('onAuthStateChange - error fetching userData:', userDataError)
+        // If user doesn't exist in users table, create them
+        if (userDataError.code === 'PGRST116') {
+          console.log('onAuthStateChange - user not found in users table, creating user record')
+          const { data: newUserData, error: createError } = await supabase
+            .from('users')
+            .insert({
+              id: session.user.id,
+              email: session.user.email || '',
+              full_name: session.user.user_metadata?.full_name || null,
+              role: 'user'
+            })
+            .select('role')
+            .single()
+          
+          if (createError) {
+            console.error('onAuthStateChange - error creating user record:', createError)
+            userData = { role: 'user' } // fallback
+          } else {
+            userData = newUserData
+            console.log('onAuthStateChange - created new user record:', userData)
+          }
+        } else {
+          userData = { role: 'user' } // fallback for other errors
+        }
       } else {
         userData = userDataResult
       }
     } catch (err) {
       console.error('onAuthStateChange - exception fetching userData:', err)
+      userData = { role: 'user' } // fallback
     }
     
     console.log('onAuthStateChange - userData from users table:', userData)
